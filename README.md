@@ -43,3 +43,10 @@ The program allows users to manage contacts by adding, deleting, searching, and 
 1. Clone this repository:  
    ```bash
    git clone https://github.com/mrfahrenheit0528/Architecture-and-Organization-Final-Project.git
+
+---
+
+## Documentation
+- Google Docs:
+  https://docs.google.com/document/d/1MfjFmMlAJt0RzWlr7dyyYsjDF3K0zApG5CoS3Rd58_Y/edit?usp=sharing
+  
