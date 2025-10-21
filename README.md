@@ -32,14 +32,14 @@ The program allows users to manage contacts by adding, deleting, searching, and 
 
 ---
 
-## 🛠️ Technologies Used
+## Technologies Used
 - **Assembly Language** (x86 / NASM)  
 - Modular programming principles  
 - Error handling and validation routines  
 
 ---
 
-## 🚀 How to Run
+## How to Run
 1. Clone this repository:  
    ```bash
    git clone https://github.com/mrfahrenheit0528/Architecture-and-Organization-Final-Project.git
