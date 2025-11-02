@@ -362,9 +362,153 @@ compare_str:
 
 ; ===== SEARCH FUNCTIONS =====
 ; ----- search_by_name -----
+search_by_name:
+    ; check if there are any contacts
+    mov eax, [contact_count]
+    cmp eax, 0
+    je .no_contacts
+
+    ; prompt for name
+    push prompt_name
+    call _printf
+    add esp, 4
+
+    push input_name
+    push fmt_namenum
+    call _scanf
+    add esp, 8
+
+    mov ebx, 0  ; index counter
+
+.name_search_loop:
+    cmp ebx, [contact_count]
+    jge .not_found          ; reached end of list
+
+    mov ecx, ebx
+    imul ecx, RECORD_SIZE
+    mov esi, contacts
+    add esi, ecx            ; current record ptr
+
+    push NAME_SIZE
+    push esi
+    push input_name
+    call compare_str
+    add esp, 12
+
+    cmp eax, 0
+    je .found
+
+    inc ebx
+    jmp .name_search_loop
+
+.found:
+    push display_hdr
+    call _printf
+    add esp, 4
+
+    ; compute record ptr again to display
+    mov ecx, ebx
+    imul ecx, RECORD_SIZE
+    mov esi, contacts
+    add esi, ecx
+    mov edx, esi
+    add esi, NAME_SIZE
+
+    push esi
+    push edx
+    push ebx
+    push fmt_display_contact
+    call _printf
+    add esp, 16
+
+    jmp search_menu
+
+.not_found:
+    push contact_not_found
+    call _printf
+    add esp, 4
+    jmp search_menu
+
+.no_contacts:
+    push no_contacts_msg
+    call _printf
+    add esp, 4
+    jmp search_menu
+
 
 ; ----- search_by_number -----
+search_by_number:
+    ; check if there are any contacts
+    mov eax, [contact_count]
+    cmp eax, 0
+    je .no_contacts
 
+    ; prompt for number
+    push prompt_number
+    call _printf
+    add esp, 4
+
+    push input_number
+    push fmt_namenum
+    call _scanf
+    add esp, 8
+
+    mov ebx, 0  ; index counter
+
+.num_search_loop:
+    cmp ebx, [contact_count]
+    jge .not_found          ; reached end of list
+
+    mov ecx, ebx
+    imul ecx, RECORD_SIZE
+    mov esi, contacts
+    add esi, ecx
+    add esi, NAME_SIZE      ; skip name to get to number
+
+    push NUMBER_SIZE
+    push esi
+    push input_number
+    call compare_str
+    add esp, 12
+
+    cmp eax, 0
+    je .found
+
+    inc ebx
+    jmp .num_search_loop
+
+.found:
+    push display_hdr
+    call _printf
+    add esp, 4
+
+    mov ecx, ebx
+    imul ecx, RECORD_SIZE
+    mov esi, contacts
+    add esi, ecx
+    mov edx, esi
+    add esi, NAME_SIZE
+
+    push esi
+    push edx
+    push ebx
+    push fmt_display_contact
+    call _printf
+    add esp, 16
+
+    jmp search_menu
+
+.not_found:
+    push contact_not_found
+    call _printf
+    add esp, 4
+    jmp search_menu
+
+.no_contacts:
+    push no_contacts_msg
+    call _printf
+    add esp, 4
+    jmp search_menu
 
 
 
@@ -537,10 +681,10 @@ _main:
 		mov eax, [choice]
 		cmp eax, 0
 			je main_menu
-		; cmp eax, 1
-		; 	je search_by_name
-		; cmp eax, 2
-		; 	je search_by_number
+		 cmp eax, 1
+		 	je search_by_name
+		 cmp eax, 2
+		 	je search_by_number
 
         push inputChoiceInvalid
 		call _printf
