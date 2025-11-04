@@ -420,11 +420,64 @@ display_all_contacts:
     jmp main_menu
 
 ; ----- display_contacts_by_letter -----
+display_contacts_by_letter:
+    push display_hdr
+    call _printf
+    add esp, 4
 
+    push display_letter_prompt
+    call _printf
+    add esp, 4
 
+    call clear_input_buffer
 
+    push clear_buffer
+    push char_fmt
+    call _scanf
+    add esp, 8
 
+    mov al, [clear_buffer]    ; letter to search
+    mov bl, al                ; save letter in bl
 
+    mov esi, 0                ; contact index
+    mov edi, 0                ; byte offset in contacts
+
+    mov eax, [contact_count]
+    cmp eax, 0
+    je .no_contacts_letter
+
+.loop_letter:
+    cmp esi, [contact_count]
+    jge .end_letter
+
+    mov edx, contacts
+    add edx, edi              ; pointer to current record
+    mov al, [edx]             ; first char of name
+    cmp al, bl
+    jne .skip_letter
+
+    lea ecx, [edx + NAME_SIZE] ; pointer to number
+
+    push ecx                   ; number
+    push edx                   ; name
+    push esi                   ; contact index
+    push fmt_display_contact
+    call _printf
+    add esp, 16
+
+.skip_letter:
+    inc esi
+    add edi, RECORD_SIZE
+    jmp .loop_letter
+
+.end_letter:
+    jmp main_menu
+
+.no_contacts_letter:
+    push no_contacts_msg
+    call _printf
+    add esp, 4
+    jmp main_menu
 
 ;--- main program loop --------------
 _main:
