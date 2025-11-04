@@ -23,7 +23,7 @@ The program allows users to manage contacts by adding, deleting, searching, and 
 
 - **Display Contacts**  
   - [x] Display all saved contacts  
-  - [ ] Display contacts starting with a specific letter  
+  - [x] Display contacts starting with a specific letter  
 
 - **Other Highlights**  
   - Menu-driven interface  
