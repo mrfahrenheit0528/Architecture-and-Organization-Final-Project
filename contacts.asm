@@ -2,16 +2,16 @@
 section .data
 	;prompts, messages, and menu options
 	intro db "==============================================", 10,"========== Contact Directory System ==========", 10, "==============================================", 10, 0
-	main_menu_opt db 10, "======== MAIN MENU ========", 10, "[1] Add Contact", 10, "[2] Delete Contact", 10, "[3] Search", 10, "[4] Display All", 10, "[5] Display By Letter", 10, "[0] Exit Program", 10, 0
+	main_menu_opt db 10, "================= MAIN MENU =================", 10, "[1] Add Contact", 10, "[2] Delete Contact", 10, "[3] Search", 10, "[4] Display All", 10, "[5] Display By Letter", 10, "[0] Exit Program", 10, 0
 
     delete_menu_opt db "[1] Delete by Name", 10, "[2] Delete by Number", 10, "[0] Return to Main Menu", 10, 0
 	search_menu_opt db "[1] Search by Name", 10, "[2] Search by Number", 10, "[0] Return to Main Menu", 10, 0
 
     ; HEADERS
-    add_hdr db 10, "++++++++++ ADD Contact ++++++++++", 10, 0
-    delete_hdr db 10, "---------- DELETE Contact ----------", 10, 0
-    search_hdr db 10, "~~~~~~~~~~ SEARCH Contact ~~~~~~~~~~", 10, 0
-    display_hdr db 10, "********** Contact List **********", 10, 0
+    add_hdr db 10, "++++++++++++++++ ADD Contact ++++++++++++++++", 10, 0
+    delete_hdr db 10, "--------------- DELETE Contact ---------------", 10, 0
+    search_hdr db 10, "~~~~~~~~~~~~~~~ SEARCH Contact ~~~~~~~~~~~~~~~", 10, 0
+    display_hdr db 10, "*************** Contact List ****************", 10, 0
 
     ; PROMPTS
     prompt_choice db 10, "Enter your choice: ", 0
@@ -36,18 +36,26 @@ section .data
     ; For when there's no records in contact to display
 	no_contacts_msg db 10, "No contacts available.", 10, 0
 
+    ; Error messages
+    name_invalid_chars db 10, "Error: Name must only contain letters and spaces.", 10, 10, 0
+    name_too_long db 10, "Error: Name is too long (Max 31 characters).", 10, 10, 0
+
+    num_invalid_chars db 10, "Error: Number must only contain digits (0-9).", 10, 10, 0
+    num_invalid_len db 10, "Error: Number must be exactly 10 digits long.", 10, 10, 0
+
     ; For exiting
     thank_you_msg db 10, "Thank you for using the Contact Directory System!", 10, 0
 
 	; formats for scanf and printf
 	fmt_choice db "%d", 0
 	fmt_namenum db "%s", 0
-	fmt_display_contact db "----------------------------------", 10, "Contact %d: %s, %s", 10, "----------------------------------", 10, 0
+
+	fmt_display_contact db "----------------------------------------------", 10, "Contact %d: %s, %s", 10, "----------------------------------------------", 10, 0
     char_fmt db "%c", 0
 
 	; constants
 	NAME_SIZE equ 32
-	NUMBER_SIZE equ 11
+	NUMBER_SIZE equ 12
 	RECORD_SIZE equ (NAME_SIZE + NUMBER_SIZE)
 	MAX_CONTACTS equ 100
 
@@ -64,7 +72,123 @@ section .bss
 ;==== TEXT ===========================================================
 section .text
 	global _main
-	extern _printf, _scanf
+	extern _printf, _scanf, _exit
+
+; === VALIDATION SUBROUTINES ===
+; ---- helper function: validate name ----
+validate_name:
+    push ebp
+    mov ebp, esp
+    push esi
+    push ecx
+    push edx
+
+    mov esi, [ebp+8]    ; address of string
+    mov ecx, 0          ; char counter
+
+.name_char_loop:
+    movzx edx, byte [esi+ecx]   ; load current char
+
+    cmp edx, 0
+    je .name_check_length   ; null terminator
+
+    cmp ecx, NAME_SIZE - 1      ; check if length  (NAME_SIZE = 32, max 31 chars + null)
+    jge .name_invalid
+
+    cmp edx, 'A'
+    jl .check_lower
+
+    cmp edx, 'Z'
+    jle .name_continue
+
+.check_lower:
+    cmp edx, 'a'
+    jl .check_space
+
+    cmp edx, 'z'
+    jle .name_continue
+
+.check_space:
+    cmp edx, ' '
+    je .name_continue
+
+    jmp .name_invalid
+
+.name_continue:
+    inc ecx
+    jmp .name_char_loop
+
+.name_check_length:
+    cmp ecx, 0
+    je .name_invalid
+
+    mov eax, 0
+    jmp .name_done
+
+.name_invalid:
+    mov eax, 1
+
+.name_done:
+    pop edx
+    pop ecx
+    pop esi
+    pop ebp
+    ret
+
+; ---- helper function: validate name ----
+validate_num:
+    push ebp
+    mov ebp, esp
+    push esi
+    push ecx
+    push edx
+
+    mov esi, [ebp+8]
+    mov ecx, 0
+
+.num_char_loop:
+    movzx edx, byte [esi+ecx]
+
+    cmp edx, 0
+    je .num_check_length
+
+    cmp edx, '0'
+    jl .num_invalid_char
+
+    cmp edx, '9'
+    jg .num_invalid_char
+
+    inc ecx
+
+    cmp ecx, NUMBER_SIZE - 1
+    jg .num_too_long
+
+    jmp .num_char_loop
+
+.num_invalid_char:
+    mov eax, 1
+    jmp .num_done
+
+.num_too_long:
+    mov eax, 2
+    jmp .num_done
+
+.num_check_length:
+    cmp ecx, NUMBER_SIZE - 1
+    jne .num_invalid_length
+
+    mov eax, 0
+    jmp .num_done
+
+.num_invalid_length:
+    mov eax, 2
+
+.num_done:
+    pop edx
+    pop ecx
+    pop esi
+    pop ebp
+    ret
 
 ; ==== ADD FUNCTIONS ====
 
@@ -75,25 +199,74 @@ add_contact:
     call _printf
     add esp, 4
 
+.prompt_name_loop:
 	; prompt name
 	push prompt_name
 	call _printf
 	add esp, 4
+
+    call clear_input_buffer
 
 	push input_name
 	push fmt_namenum
 	call _scanf
 	add esp, 8
 
+    push input_name
+    call validate_name
+    add esp, 4
+
+    cmp eax, 0
+    jne .name_validation_failed
+
+    jmp .prompt_number_loop
+
+.name_validation_failed:
+    push name_invalid_chars
+    call _printf
+    add esp, 4
+    jmp .prompt_name_loop
+
+.prompt_number_loop:
 	; prompt phone
 	push prompt_number
 	call _printf
 	add esp, 4
 
+    call clear_input_buffer
+
 	push input_number
 	push fmt_namenum
 	call _scanf
 	add esp, 8
+
+    push input_number
+    call validate_num
+    add esp, 4
+
+    cmp eax, 0
+    je .copy_contact
+
+    cmp eax, 1
+    je .raiseInvalidChar
+
+    jmp .raiseInvalidLen
+
+.raiseInvalidChar:
+    push num_invalid_chars
+    call _printf
+    add esp, 4
+
+    jmp .prompt_number_loop
+
+.raiseInvalidLen:
+    push num_invalid_len
+    call _printf
+    add esp, 4
+
+    jmp .prompt_number_loop
+
+.copy_contact:
 
 	; copy into contacts array
 	mov eax, [contact_count]       ; index
@@ -642,6 +815,7 @@ _main:
 		call _printf
 		add esp, 4
 
+        push main_menu
         push choice
 		push fmt_choice
 		call _scanf
@@ -661,8 +835,8 @@ _main:
 			je search_menu
 		cmp eax, 4
 			je display_all_contacts
-		; cmp eax, 5
-		; 	je display_contacts_by_letter
+		cmp eax, 5
+		 	je display_contacts_by_letter
 
         push inputChoiceInvalid
 		call _printf
@@ -723,6 +897,7 @@ _main:
 		call _printf
 		add esp, 4
 
+        push search_menu
         push choice
 		push fmt_choice
 		call _scanf
@@ -734,9 +909,9 @@ _main:
 		mov eax, [choice]
 		cmp eax, 0
 			je main_menu
-		 cmp eax, 1
+		cmp eax, 1
 		 	je search_by_name
-		 cmp eax, 2
+		cmp eax, 2
 		 	je search_by_number
 
         push inputChoiceInvalid
@@ -746,21 +921,31 @@ _main:
 
 	; -------------------------
 	exit_program:
-			push thank_you_msg
-			call _printf
-			add esp, 4
-			ret
+		push thank_you_msg
+		call _printf
+		add esp, 4
+
+    push 0
+    call _exit
 
 ; ===== VALIDATIONS ======
 raiseChoiceNotInt:
+    push ebp
+    mov ebp, esp
+
     ; Error handling for when input not int
     call clear_input_buffer     ; clear residual input
 
+    ; Display error message
     push inputFormatInvalid           ; push error message
     call _printf                ; display error
     add esp, 4                  ; clean stack
 
-    jmp main_menu              ; return to main menu
+    ; Retrieve return address from stack
+    mov ebx, [ebp+8]
+
+    pop ebp
+    jmp ebx
 
 ; Clear input buffer function
 clear_input_buffer:
